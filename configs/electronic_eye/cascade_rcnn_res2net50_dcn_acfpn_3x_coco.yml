@@ -1,0 +1,124 @@
+architecture: CascadeRCNN
+# 最大迭代次数，而一个iter会运行batch_size * device_num张图片
+# 一般batch_size为1时，1x迭代18万次，2x迭代36万次
+# 17102 /(4*1) = 4276 * 36 = 153936
+max_iters: 153936    # 36e
+snapshot_iter: 12828 # 3e
+use_gpu: true
+log_iter: 20
+save_dir: output
+pretrain_weights: https://paddle-imagenet-models-name.bj.bcebos.com/Res2Net50_26w_4s_pretrained.tar
+weights: output/cascade_rcnn_res2net50_dcn_acfpn_3x_coco/model_final
+metric: COCO
+num_classes: 4
+
+CascadeRCNN:
+  backbone: Res2Net
+  fpn: ACFPN
+  rpn_head: FPNRPNHead
+  roi_extractor: FPNRoIAlign
+  bbox_head: CascadeBBoxHead
+  bbox_assigner: CascadeBBoxAssigner
+
+Res2Net:
+  depth: 50
+  width: 26
+  scales: 4
+  feature_maps: [2, 3, 4, 5]
+  freeze_at: 2
+  norm_type: bn
+  variant: d
+  dcn_v2_stages: [3, 4, 5]
+
+ACFPN:
+  max_level: 6
+  min_level: 2
+  num_chan: 256
+  spatial_scale: [0.03125, 0.0625, 0.125, 0.25]
+  norm_groups: 32
+
+FPNRPNHead:
+  # 根据特征图尺寸，在特征图的每个位置生成N个大小、长宽比各不同anchor
+  # N = anchor_sizes * aspect_ratios
+  anchor_generator:
+    anchor_sizes: [4, 8, 16, 32, 64, 128]
+    aspect_ratios: [0.5, 1.08, 1.5, 2.0]
+    stride: [16.0, 16.0]
+    variance: [1.0, 1.0, 1.0, 1.0]
+  anchor_start_size: 32
+  min_level: 2
+  max_level: 6
+  num_chan: 256
+  rpn_target_assign:
+    rpn_batch_size_per_im: 256
+    rpn_fg_fraction: 0.5
+    rpn_positive_overlap: 0.7
+    rpn_negative_overlap: 0.3
+    rpn_straddle_thresh: 0.0
+  train_proposal:
+    min_size: 0.0
+    nms_thresh: 0.7
+    pre_nms_top_n: 2000
+    post_nms_top_n: 2000
+  test_proposal:
+    min_size: 0.0
+    nms_thresh: 0.7
+    pre_nms_top_n: 1000
+    post_nms_top_n: 1000
+
+# 对FPN每层执行RoIAlign后，然后合并输出结果，用于BBox Head计算
+FPNRoIAlign:
+  # 用于抽取特征特征的FPN的层数，默认为4
+  canconical_level: 4
+  # 用于抽取特征特征的FPN的特征图尺寸，默认为224
+  canonical_size: 224
+  # 用于抽取特征特征的最高层FPN，默认是2
+  max_level: 5
+  # 用于抽取特征特征的最底层FPN，默认是2
+  min_level: 2
+  #roi extractor的采样率，默认为2
+  sampling_ratio: 2
+  # 输出bbox的特征图尺寸，默认为7
+  box_resolution: 7
+  # 输出mask的特征图尺寸，默认为14
+  mask_resolution: 14
+
+CascadeBBoxAssigner:
+  batch_size_per_im: 512
+  bbox_reg_weights: [10, 20, 30]
+  bg_thresh_lo: [0.0, 0.0, 0.0]
+  bg_thresh_hi: [0.5, 0.6, 0.7]
+  fg_thresh: [0.5, 0.6, 0.7]
+  fg_fraction: 0.25
+
+CascadeBBoxHead:
+  head: CascadeTwoFCHead
+  nms: MultiClassSoftNMS
+
+CascadeTwoFCHead:
+  mlp_dim: 1024
+
+MultiClassSoftNMS:
+  score_threshold: 0.01
+  keep_top_k: 300
+  softnms_sigma: 0.5
+
+LearningRate:
+  base_lr: 0.01 # 4 GPU bs 1
+  schedulers:
+  - !PiecewiseDecay
+    gamma: 0.1
+    milestones: [119700, 145350] # 36e [28, 34] max_iters: 153936
+  - !LinearWarmup
+    start_factor: 0.0
+    steps: 2000 # 1 epoch 4275
+
+OptimizerBuilder:
+  optimizer:
+    momentum: 0.9
+    type: Momentum
+  regularizer:
+    factor: 0.0001
+    type: L2
+
+_READER_: './ms_data_reader.yml'

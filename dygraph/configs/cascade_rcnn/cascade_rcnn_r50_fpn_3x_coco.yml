@@ -1,0 +1,23 @@
+_BASE_: [
+  '../datasets/coco_detection.yml',
+  '../runtime.yml',
+  '_base_/optimizer_1x.yml',
+  '_base_/cascade_rcnn_r50_fpn.yml',
+  '_base_/cascade_fpn_reader.yml',
+]
+
+weights: output/cascade_rcnn_r50_fpn_3x_coco/model_final
+snapshot_epoch: 6
+epoch: 36
+LearningRate:
+  # base_lr: 0.01
+  base_lr: 0.0025 # gpu 4
+  schedulers:
+  - !PiecewiseDecay
+    gamma: 0.1
+    #milestones: [8, 11]
+    milestones: [28, 34]
+  - !LinearWarmup
+    start_factor: 0.001
+    steps: 1000
+

@@ -1,0 +1,92 @@
+_BASE_: [
+  '../datasets/coco_detection.yml',
+  '../runtime.yml',
+  '_base_/optimizer_1x.yml',
+  '_base_/cascade_rcnn_r50_fpn.yml',
+  '_base_/cascade_fpn_reader.yml',
+]
+
+pretrain_weights: C:\Users\Mrtutu\Desktop\fsdownload\cascade_rcnn_r50_fpn_3x_coco_model_final.pdparams
+load_static_weights: False
+
+weights: output/finetune
+snapshot_epoch: 6
+epoch: 12
+LearningRate:
+  # base_lr: 0.01
+  base_lr: 0.0025 # gpu 4
+  schedulers:
+  - !PiecewiseDecay
+    gamma: 0.1
+    milestones: [8, 11]
+  - !LinearWarmup
+    start_factor: 0.0005
+    steps: 1000
+
+
+ResNet:
+  # index 0 stands for res2
+  depth: 50
+  norm_type: bn
+  freeze_at: 0
+  return_idx: [0,1,2,3]
+  num_stages: 4
+
+worker_num: 2
+TrainReader:
+  sample_transforms:
+  - Decode: {}
+  - RoadEnhance: {} # diy 
+  - RandomResize: {target_size: [[1080, 1920]], interp: 2, keep_ratio: True} # high resulution
+  - RandomFlip: {prob: 0.7}
+  - NormalizeImage: {is_scale: true, mean: [0.485,0.456,0.406], std: [0.229, 0.224,0.225]}
+  - Permute: {}
+  batch_transforms:
+  - PadBatch: {pad_to_stride: 32, pad_gt: true}
+  batch_size: 1
+  shuffle: true
+  drop_last: true
+
+
+RPNHead:
+  anchor_generator:
+    aspect_ratios: [0.5, 1.0, 2.0]
+    #anchor_sizes: [[32], [64], [128], [256], [512]]
+    anchor_sizes: [[8], [16], [32], [64], [128]]
+    strides: [4, 8, 16, 32, 64]
+  rpn_target_assign:
+    batch_size_per_im: 256
+    fg_fraction: 0.5
+    negative_overlap: 0.3
+    positive_overlap: 0.7
+    use_random: True
+  train_proposal:
+    min_size: 0.0
+    nms_thresh: 0.75      # higher.5
+    pre_nms_top_n: 2000
+    post_nms_top_n: 2000
+    topk_after_collect: True
+  test_proposal:
+    min_size: 0.0
+    nms_thresh: 0.75     # higher.5
+    pre_nms_top_n: 1000
+    post_nms_top_n: 1000
+
+
+CascadeHead:
+  head: CascadeTwoFCHead
+  roi_extractor:
+    resolution: 7
+    sampling_ratio: 0
+    aligned: True
+  bbox_assigner: BBoxAssigner
+
+BBoxAssigner:
+  batch_size_per_im: 512
+  bg_thresh: 0.5
+  fg_thresh: 0.5
+  fg_fraction: 0.25
+  #cascade_iou: [0.5, 0.6, 0.7]
+  cascade_iou: [0.55, 0.65, 0.75] # higher
+  use_random: True
+

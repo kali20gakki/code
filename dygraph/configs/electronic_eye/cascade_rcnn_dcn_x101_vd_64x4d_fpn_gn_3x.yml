@@ -1,0 +1,108 @@
+_BASE_: [
+  '_base_/coco_detection.yml',
+  '_base_/optimizer_3x.yml',
+  '_base_/multi_scale_reader_aug.yml',
+]
+architecture: CascadeRCNN
+pretrain_weights: https://paddle-imagenet-models-name.bj.bcebos.com/ResNeXt101_vd_64x4d_pretrained.tar
+load_static_weights: True
+weights: output/cascade_rcnn_dcn_x101_vd_64x4d_fpn_gn_3x/model_final
+
+use_gpu: true
+log_iter: 20
+save_dir: output
+snapshot_epoch: 1
+
+CascadeRCNN:
+  backbone: ResNet
+  neck: FPN
+  rpn_head: RPNHead
+  bbox_head: CascadeHead
+  # post process
+  bbox_post_process: BBoxPostProcess
+
+ResNet:
+  # for ResNeXt: groups, base_width, base_channels
+  depth: 101
+  groups: 64
+  base_width: 4
+  base_channels: 64
+  variant: d
+  norm_type: bn
+  freeze_at: 0
+  return_idx: [0,1,2,3]
+  num_stages: 4
+  dcn_v2_stages: [1,2,3] # C3-C5
+  lr_mult_list: [0.05, 0.05, 0.1, 0.15]
+
+FPN:
+  out_channel: 256
+  norm_type: gn
+
+RPNHead:
+  anchor_generator:
+    aspect_ratios: [0.5, 1.08, 1.5, 2.0]
+    anchor_sizes: [[4], [8], [16], [32], [64], [128]]
+    strides: [4, 8, 16, 32, 64]
+  rpn_target_assign:
+    batch_size_per_im: 256
+    fg_fraction: 0.5
+    negative_overlap: 0.3
+    positive_overlap: 0.7
+    use_random: True
+  train_proposal:
+    min_size: 0.0
+    nms_thresh: 0.7
+    pre_nms_top_n: 2000
+    post_nms_top_n: 2000
+    topk_after_collect: True
+  test_proposal:
+    min_size: 0.0
+    nms_thresh: 0.7
+    pre_nms_top_n: 1000
+    post_nms_top_n: 1000
+
+BBoxAssigner:
+  batch_size_per_im: 512
+  bg_thresh: 0.5
+  fg_thresh: 0.5
+  fg_fraction: 0.25
+  cascade_iou: [0.5, 0.6, 0.7]
+  use_random: True
+
+CascadeHead:
+  head: CascadeXConvNormHead
+  roi_extractor:
+    resolution: 7
+    sampling_ratio: 0
+    aligned: True
+  bbox_assigner: BBoxAssigner
+
+CascadeXConvNormHead:
+  num_convs: 4
+  mlp_dim: 1024
+  norm_type: gn
+
+BBoxPostProcess:
+  decode:
+    name: RCNNBox
+    prior_box_var: [30.0, 30.0, 15.0, 15.0]
+  nms:
+    name: MultiClassNMS
+    keep_top_k: 100
+    score_threshold: 0.04
+    nms_threshold: 0.7
+    normalized: true
+
+# TrainDataset:
+#   !COCODataSet
+#     image_dir: train
+#     anno_path: annotations/train_new.json
+#     dataset_dir: D:\PaddleDataset
+#     data_fields: ['image', 'gt_bbox', 'gt_class', 'is_crowd']
+
+# EvalDataset:
+#   !COCODataSet
+#     image_dir: val
+#     anno_path: annotations/val.json
+#     dataset_dir: D:\PaddleDataset
