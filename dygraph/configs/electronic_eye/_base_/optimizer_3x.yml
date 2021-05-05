@@ -1,4 +1,4 @@
-epoch: 36
+epoch: 3
 
 LearningRate:
   base_lr: 0.005 # 4 GPU 0.005 8GPU 0.01

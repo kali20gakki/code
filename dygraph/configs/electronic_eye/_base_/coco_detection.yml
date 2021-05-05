@@ -4,7 +4,7 @@ num_classes: 3
 TrainDataset:
   !COCODataSet
     image_dir: train
-    anno_path: annotations/train_new.json
+    anno_path: annotations/train_tiny.json
     dataset_dir: dataset/camera/PaddleDataset
     data_fields: ['image', 'gt_bbox', 'gt_class', 'is_crowd']
 
