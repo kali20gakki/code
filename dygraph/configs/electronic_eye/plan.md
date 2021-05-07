@@ -3,7 +3,7 @@
 - [ ] 
 ## On the training
 
-- [ ] cascade_rcnn_r50_fpn_3x **codelab**
+- [ ] cascade_rcnn_hrnetv2p_w18_3x_coco **codelab**
 - [ ] cascade_rcnn_dcn_x101_vd_64x4d_fpn_gn_3x **2080ti*4**
 
 
