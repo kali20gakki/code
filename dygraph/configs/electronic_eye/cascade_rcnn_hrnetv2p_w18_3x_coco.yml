@@ -12,7 +12,7 @@ weights: output/cascade_rcnn_hrnetv2p_w18_3x_coco/model_final
 use_gpu: true
 log_iter: 20
 save_dir: output
-snapshot_epoch: 6
+snapshot_epoch: 12
 
 CascadeRCNN:
   backbone: HRNet

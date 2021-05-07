@@ -1,10 +1,10 @@
 metric: COCO
-num_classes: 3
+num_classes: 36
 
 TrainDataset:
   !COCODataSet
     image_dir: train
-    anno_path: annotations/train_tiny.json
+    anno_path: annotations/train_new.json
     dataset_dir: dataset/camera/PaddleDataset
     data_fields: ['image', 'gt_bbox', 'gt_class', 'is_crowd']
 
