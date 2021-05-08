@@ -177,7 +177,7 @@ class RoadEnhance(BaseOperator):
                             iaa.MultiplyAndAddToBrightness(mul=(0.5, 1.5), add=(-30, 30)),
                             iaa.MotionBlur(k=7, angle=[-45, 45]),
                             iaa.Snowflakes(flake_size=(0.5, 0.75), speed=(0.001, 0.03)),
-                            iaa.Rain(drop_size=(0.10, 0.20)),
+                            # iaa.Rain(drop_size=(0.10, 0.20)),
                         ]
                         )
         )]

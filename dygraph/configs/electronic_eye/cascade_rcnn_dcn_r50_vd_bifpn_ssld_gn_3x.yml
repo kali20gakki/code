@@ -4,7 +4,7 @@ _BASE_: [
   '_base_/multi_scale_reader_aug.yml',
 ]
 architecture: CascadeRCNN
-pretrain_weights: https://paddledet.bj.bcebos.com/models/pretrained/ResNet50_vd_ssld_v2_pretrained.pdparams
+pretrain_weights: https://paddledet.bj.bcebos.com/models/pretrained/ResNet50_vd_pretrained.pdparams
 load_static_weights: True
 weights: output/cascade_rcnn_dcn_r50_vd_bifpn_ssld_gn_3x/model_final
 
