@@ -339,9 +339,9 @@ class BBoxHead(nn.Layer):
         tgt_labels.stop_gradient = True
         
         # CE -> Focal loss
-        # loss_bbox_cls = F.cross_entropy(
-        #     input=scores, label=tgt_labels, reduction='mean')
-        loss_bbox_cls = softmax_focal_loss(scores, tgt_labels, self.num_classes)
+        loss_bbox_cls = F.cross_entropy(
+            input=scores, label=tgt_labels, reduction='mean')
+        #loss_bbox_cls = softmax_focal_loss(scores, tgt_labels, self.num_classes)
 
         # bbox reg
         cls_agnostic_bbox_reg = deltas.shape[1] == 4
