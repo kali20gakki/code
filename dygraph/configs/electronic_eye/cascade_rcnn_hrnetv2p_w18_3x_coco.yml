@@ -84,3 +84,9 @@ BBoxPostProcess:
     score_threshold: 0.04
     nms_threshold: 0.7
     normalized: true
+
+EvalDataset:
+  !COCODataSet
+    image_dir: val
+    anno_path: annotations/val.json
+    dataset_dir: D:\PaddleDataset

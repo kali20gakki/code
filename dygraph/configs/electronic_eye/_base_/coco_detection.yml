@@ -1,5 +1,5 @@
 metric: COCO
-num_classes: 36
+num_classes: 3
 
 TrainDataset:
 
@@ -17,4 +17,4 @@ EvalDataset:
 
 TestDataset:
   !ImageFolder
-    anno_path: annotations/image_info_val.json
+    anno_path: annotations/val.json

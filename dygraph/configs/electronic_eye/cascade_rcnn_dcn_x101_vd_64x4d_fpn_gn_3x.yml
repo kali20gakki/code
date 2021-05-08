@@ -58,7 +58,7 @@ RPNHead:
     topk_after_collect: True
   test_proposal:
     min_size: 0.0
-    nms_thresh: 0.7
+    nms_thresh: 0.6
     pre_nms_top_n: 1000
     post_nms_top_n: 1000
 
@@ -67,6 +67,7 @@ BBoxAssigner:
   bg_thresh: 0.5
   fg_thresh: 0.5
   fg_fraction: 0.25
+  #cascade_iou: [0.5, 0.6, 0.7]
   cascade_iou: [0.5, 0.6, 0.7]
   use_random: True
 
@@ -91,7 +92,7 @@ BBoxPostProcess:
     name: MultiClassNMS
     keep_top_k: 100
     score_threshold: 0.04
-    nms_threshold: 0.7
+    nms_threshold: 0.6
     normalized: true
 
 TrainDataset:
