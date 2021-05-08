@@ -5,6 +5,7 @@ _BASE_: [
 ]
 architecture: CascadeRCNN
 pretrain_weights: https://paddledet.bj.bcebos.com/models/pretrained/ResNet50_vd_pretrained.pdparams
+#pretrain_weights: https://paddle-imagenet-models-name.bj.bcebos.com/ResNet50_cos_pretrained.tar
 load_static_weights: True
 weights: output/cascade_rcnn_dcn_r50_vd_fpn_ssld_gn_3x/model_final
 
@@ -32,9 +33,9 @@ ResNet:
   dcn_v2_stages: [1,2,3]
   lr_mult_list: [0.05, 0.05, 0.1, 0.15]
 
-
 FPN:
   out_channel: 256
+  norm_type: gn
 
 RPNHead:
   anchor_generator:
@@ -62,7 +63,7 @@ RPNHead:
 
 
 CascadeHead:
-  head: CascadeXConvNormHead
+  head: CascadeTwoFCHead
   roi_extractor:
     resolution: 7
     sampling_ratio: 0
@@ -77,10 +78,13 @@ BBoxAssigner:
   cascade_iou: [0.5, 0.65, 0.75]
   use_random: True
 
-CascadeXConvNormHead:
-  num_convs: 4
+CascadeTwoFCHead:
   mlp_dim: 1024
-  norm_type: gn
+
+# CascadeXConvNormHead:
+#   num_convs: 4
+#   mlp_dim: 1024
+#   norm_type: gn
 
 BBoxPostProcess:
   decode:

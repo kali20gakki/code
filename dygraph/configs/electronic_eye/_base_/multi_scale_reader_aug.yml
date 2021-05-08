@@ -18,7 +18,8 @@ TrainReader:
 EvalReader:
   sample_transforms:
   - Decode: {}
-  - MultiscaleTestResize: {interp: 2, target_size: [[640, 1333], [672, 1333], [720, 1280], [800, 1333], [1080, 1920]]}
+  - Resize: {interp: 2, target_size: [800, 1333], keep_ratio: True}
+  #- MultiscaleTestResize: {interp: 2, target_size: [[640, 1333], [672, 1333], [720, 1280], [800, 1333]]}
   - NormalizeImage: {is_scale: true, mean: [0.485,0.456,0.406], std: [0.229, 0.224,0.225]}
   - Permute: {}
   batch_transforms:
@@ -32,7 +33,7 @@ EvalReader:
 TestReader:
   sample_transforms:
   - Decode: {}
-  - MultiscaleTestResize: {interp: 2, target_size: [[640, 1333], [672, 1333], [720, 1280], [800, 1333], [1080, 1920]]}
+  - MultiscaleTestResize: {interp: 2, target_size: [[640, 1333], [672, 1333], [720, 1280], [800, 1333]]}
   - NormalizeImage: {is_scale: true, mean: [0.485,0.456,0.406], std: [0.229, 0.224,0.225]}
   - Permute: {}
   batch_transforms:
