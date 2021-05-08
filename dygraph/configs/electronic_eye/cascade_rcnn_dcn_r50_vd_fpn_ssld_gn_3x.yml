@@ -90,19 +90,19 @@ BBoxPostProcess:
     name: MultiClassNMS
     keep_top_k: 100
     score_threshold: 0.04
-    nms_threshold: 0.7
+    nms_threshold: 0.73  # bigger
     normalized: true
 
 
-TrainDataset:
-  !COCODataSet
-    image_dir: train
-    anno_path: annotations/train_new.json
-    dataset_dir: D:\PaddleDataset
-    data_fields: ['image', 'gt_bbox', 'gt_class', 'is_crowd']
+# TrainDataset:
+#   !COCODataSet
+#     image_dir: train
+#     anno_path: annotations/train_new.json
+#     dataset_dir: D:\PaddleDataset
+#     data_fields: ['image', 'gt_bbox', 'gt_class', 'is_crowd']
 
-EvalDataset:
-  !COCODataSet
-    image_dir: val
-    anno_path: annotations/val.json
-    dataset_dir: D:\PaddleDataset
+# EvalDataset:
+#   !COCODataSet
+#     image_dir: val
+#     anno_path: annotations/val.json
+#     dataset_dir: D:\PaddleDataset
