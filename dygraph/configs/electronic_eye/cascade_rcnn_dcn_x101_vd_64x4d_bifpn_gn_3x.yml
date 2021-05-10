@@ -22,16 +22,15 @@ CascadeRCNN:
   bbox_post_process: BBoxPostProcess
 
 ResNet:
-  # for ResNeXt: groups, base_width, base_channels
   depth: 101
   groups: 64
   base_width: 4
-  base_channels: 64
   variant: d
   norm_type: bn
   freeze_at: 0
   return_idx: [0,1,2,3]
   num_stages: 4
+  dcn_v2_stages: [1,2,3]
   dcn_v2_stages: [1,2,3] # C3-C5
   lr_mult_list: [0.05, 0.05, 0.1, 0.15]
 
