@@ -11,7 +11,7 @@ weights: output/cascade_rcnn_r50_fpn_3x/model_final
 use_gpu: true
 log_iter: 20
 save_dir: output
-snapshot_epoch: 1
+snapshot_epoch: 6
 
 CascadeRCNN:
   backbone: ResNet
@@ -52,7 +52,7 @@ RPNHead:
     topk_after_collect: True
   test_proposal:
     min_size: 0.0
-    nms_thresh: 0.60
+    nms_thresh: 0.70
     pre_nms_top_n: 1000
     post_nms_top_n: 1000
 
@@ -76,7 +76,7 @@ BBoxAssigner:
   bg_thresh: 0.5
   fg_thresh: 0.5
   fg_fraction: 0.25
-  cascade_iou: [0.5, 0.65, 0.75]
+  cascade_iou: [0.5, 0.6, 0.7]
   use_random: True
 
 CascadeTwoFCHead:
