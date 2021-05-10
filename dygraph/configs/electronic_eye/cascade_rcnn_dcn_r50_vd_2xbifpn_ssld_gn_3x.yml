@@ -12,7 +12,7 @@ weights: output/cascade_rcnn_dcn_r50_vd_2xbifpn_ssld_gn_3x/model_final
 use_gpu: true
 log_iter: 20
 save_dir: output
-snapshot_epoch: 1
+snapshot_epoch: 6
 
 CascadeRCNN:
   backbone: ResNet
