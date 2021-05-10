@@ -99,14 +99,13 @@ def softmax_focal_loss(logit, label, class_num, alpha = 0.25, gamma = 2.0, reduc
 @serializable
 class SoftmaxFocalLoss(object):
 
-    def __init__(self, loss_weight=1., alpha = 0.25, gamma = 2.0, reduction='sum'):
+    def __init__(self, loss_weight=1., alpha = 0.25, gamma = 2.0, reduction='mean'):
         self.loss_weight = loss_weight
         self.alpha = alpha
         self.gamma = gamma
         self.reduction = reduction
 
     def __call__(self, logit, label, class_num):
-        print(label)
         label_one_hot = F.one_hot(label, num_classes=class_num+1)
         label_one_hot.stop_gradient = True
 

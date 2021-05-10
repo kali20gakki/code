@@ -65,7 +65,7 @@ CascadeHead:
     aligned: True
   bbox_assigner: BBoxAssigner
   bbox_loss: DIouLoss
-  cls_loss: SeesawLoss
+  cls_loss: SoftmaxFocalLoss
 
 DIouLoss:
   loss_weight: 10.0
@@ -76,11 +76,11 @@ BBoxAssigner:
   bg_thresh: 0.5
   fg_thresh: 0.5
   fg_fraction: 0.25
-  cascade_iou: [0.5, 0.6, 0.7]
+  cascade_iou: [0.5, 0.65, 0.75]
   use_random: True
 
 CascadeTwoFCHead:
-  mlp_dim: 1024
+  out_channel: 1024
 
 BBoxPostProcess:
   decode:
@@ -89,20 +89,20 @@ BBoxPostProcess:
   nms:
     name: MultiClassNMS
     keep_top_k: 100
-    score_threshold: 0.04
-    nms_threshold: 0.7
+    score_threshold: 0.02 # smaller than 0.04
+    nms_threshold: 0.73
     normalized: true
 
 
-TrainDataset:
-  !COCODataSet
-    image_dir: train
-    anno_path: annotations/train_new.json
-    dataset_dir: D:\PaddleDataset
-    data_fields: ['image', 'gt_bbox', 'gt_class', 'is_crowd']
+# TrainDataset:
+#   !COCODataSet
+#     image_dir: train
+#     anno_path: annotations/train_new.json
+#     dataset_dir: D:\PaddleDataset
+#     data_fields: ['image', 'gt_bbox', 'gt_class', 'is_crowd']
 
-EvalDataset:
-  !COCODataSet
-    image_dir: val
-    anno_path: annotations/val.json
-    dataset_dir: D:\PaddleDataset
+# EvalDataset:
+#   !COCODataSet
+#     image_dir: val
+#     anno_path: annotations/val.json
+#     dataset_dir: D:\PaddleDataset
