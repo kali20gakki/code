@@ -16,12 +16,14 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import numpy as np
+
 import paddle
 import paddle.nn.functional as F
 from ppdet.core.workspace import register, serializable
-from ..utils import xywh2xyxy, bbox_iou, decode_yolo
+from ..bbox_utils import xywh2xyxy, bbox_iou
 
-__all__ = ['IouLoss', 'GIoULoss']
+__all__ = ['IouLoss', 'GIoULoss', 'DIouLoss']
 
 
 @register
@@ -200,5 +202,3 @@ class DIouLoss(GIoULoss):
         diou = paddle.mean((1 - iouk + ciou_term + diou_term) * iou_weight)
 
         return diou * self.loss_weight
-
-

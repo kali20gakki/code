@@ -6,82 +6,54 @@ import paddle.nn.functional as F
 from paddle import ParamAttr
 from paddle.regularizer import L2Decay
 
-class SeparableConvBlock(nn.Layer):
-    def __init__(self, in_channels, out_channels=None, norm=True, norm_decay=0., freeze_norm=False, activation=False):
-        super(SeparableConvBlock, self).__init__()
-        if out_channels is None:
-            out_channels = in_channels
 
-        # 不需要 bias
-        self.depthwise_conv = nn.Conv2D(in_channels, in_channels, 
-                                        kernel_size=3, stride=1, padding='same',
-                                         groups=in_channels, bias_attr=False)
-        # 需要 bias
-        self.pointwise_conv = nn.Conv2D(in_channels, out_channels, 
-                                        kernel_size=1, stride=1, padding='same')
 
-        self.norm = norm
-        if self.norm:
-            norm_lr = 0. if freeze_norm else 1.
-            param_attr = ParamAttr(
-                learning_rate=norm_lr,
-                regularizer=L2Decay(norm_decay))
-            bias_attr = ParamAttr(
-                learning_rate=norm_lr,
-                regularizer=L2Decay(norm_decay))
-            self.bn = nn.BatchNorm2D(num_features=out_channels, momentum=0.99, epsilon=1e-3,
-                                    weight_attr=param_attr, bias_attr=bias_attr)
-        
-        self.activation = activation
-        if self.activation:
-            self.swish = nn.Swish()
 
+
+# class Focal_Loss(nn.Layer):
+#     def __init__(self, class_num, alpha=0.25, gamma=2.0):
+#         self.class_num = class_num
+#         self.alpha = alpha
+#         self.gamma = gamma
+
+#         self.alpha = self.create_parameter([class_num, 1],
+#                                             dtype='float32',
+#                                             default_initializer=nn.initializer.Constant(value=alpha))
     
-    def forward(self, x):
-        x = self.depthwise_conv(x)
-        x = self.pointwise_conv(x)
+#     def forward(self, logit, label):
+#         print(self.alpha)
 
-        if self.norm:
-            x = self.bn(x)
+def softmax_focal_loss(logit, label, class_num, alpha = 0.25, gamma = 2.0):
+    """[summary]
 
-        if self.activation:
-            x = self.swish(x)
+    Args:
+        logit ([type]): [description]
+        label ([type]): [description]
+        class_num ([type]): [description]
+    """
+    label_one_hot = F.one_hot(label, num_classes=class_num+1)
+    label_one_hot.stop_gradient = True
 
-        return x
+    one = paddle.to_tensor([1.], dtype='float32')
+    fg_label = paddle.greater_equal(label_one_hot, one)
+    print(fg_label)
+    fg_num = paddle.sum(paddle.cast(fg_label, dtype='float32'))
+    print(fg_num)
+    pred = F.softmax(logit)
 
-class ConvBNLayer(nn.Layer):
+    pt = (1 - pred) * label_one_hot + pred * (1 - label_one_hot)
+    focal_weight = (alpha * label_one_hot + (1 - alpha) *(1 - label_one_hot)) * pt.pow(gamma)
+    smooth_label = F.label_smooth(label_one_hot)
+    loss = F.softmax_with_cross_entropy(pred, smooth_label, soft_label=True) * focal_weight
 
-    def __init__(self, in_channels, out_channels, norm_decay=0., freeze_norm=False):
-        super(ConvBNLayer, self).__init__()
+    return loss.sum()
 
-        norm_lr = 0. if freeze_norm else 1.
-        param_attr = ParamAttr(
-            learning_rate=norm_lr,
-            regularizer=L2Decay(norm_decay))
-        bias_attr = ParamAttr(
-            learning_rate=norm_lr,
-            regularizer=L2Decay(norm_decay))
+pred = paddle.randn([1, 4])
 
-        self.layer = nn.Sequential(
-            nn.Conv2D(in_channels=in_channels, out_channels=out_channels, 
-                    kernel_size=1, stride=1, padding='same'),
-            nn.BatchNorm2D(out_channels, momentum=0.99, epsilon=1e-3,
-            weight_attr=param_attr, bias_attr=bias_attr),
-        )
-    
-    def forward(self, x):
-        return self.layer(x)
+label = paddle.to_tensor([0])
 
 
+loss = softmax_focal_loss(pred, label, 3)
 
-c5 = paddle.randn([2, 2048, 23, 41])
-
-conv = nn.Sequential(
-    ConvBNLayer(2048, 256, freeze_norm=False),
-    nn.MaxPool2D(kernel_size=3, stride=2, padding='SAME', ceil_mode=True)
-)
-
-out = conv(c5)
-print(out.shape)
-out = F.interpolate(out, size=[23, 41])
-print(out.shape)
+print(loss)
+#print(focal_weight)

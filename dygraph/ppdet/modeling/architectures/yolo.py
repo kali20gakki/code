@@ -11,14 +11,26 @@ __all__ = ['YOLOv3']
 @register
 class YOLOv3(BaseArch):
     __category__ = 'architecture'
+    __shared__ = ['data_format']
     __inject__ = ['post_process']
 
     def __init__(self,
                  backbone='DarkNet',
                  neck='YOLOv3FPN',
                  yolo_head='YOLOv3Head',
-                 post_process='BBoxPostProcess'):
-        super(YOLOv3, self).__init__()
+                 post_process='BBoxPostProcess',
+                 data_format='NCHW'):
+        """
+        YOLOv3 network, see https://arxiv.org/abs/1804.02767
+
+        Args:
+            backbone (nn.Layer): backbone instance
+            neck (nn.Layer): neck instance
+            yolo_head (nn.Layer): anchor_head instance
+            bbox_post_process (object): `BBoxPostProcess` instance
+            data_format (str): data format, NCHW or NHWC
+        """
+        super(YOLOv3, self).__init__(data_format=data_format)
         self.backbone = backbone
         self.neck = neck
         self.yolo_head = yolo_head

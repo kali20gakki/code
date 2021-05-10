@@ -237,7 +237,7 @@ class MinorityEnhance(BaseOperator):
                 box = np.array([box], dtype='float32')
                 sample['gt_bbox'] = np.concatenate((sample['gt_bbox'], box), axis=0)
                 # add cls
-                sample['gt_class'] = np.concatenate((sample['gt_class'], np.array([[3]])), axis=0)
+                sample['gt_class'] = np.concatenate((sample['gt_class'], np.array([[2]])), axis=0)
                 # add img
                 sample['image'] = bg_img
         

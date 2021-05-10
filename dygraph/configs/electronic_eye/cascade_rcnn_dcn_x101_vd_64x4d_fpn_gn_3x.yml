@@ -72,17 +72,20 @@ BBoxAssigner:
   use_random: True
 
 CascadeHead:
-  head: CascadeXConvNormHead
+  head: CascadeTwoFCHead
   roi_extractor:
     resolution: 7
     sampling_ratio: 0
     aligned: True
   bbox_assigner: BBoxAssigner
 
-CascadeXConvNormHead:
-  num_convs: 4
-  mlp_dim: 1024
-  norm_type: gn
+CascadeTwoFCHead:
+  out_channel: 1024
+
+# CascadeXConvNormHead:
+#   num_convs: 4
+#   out_channel: 1024
+#   norm_type: gn
 
 BBoxPostProcess:
   decode:

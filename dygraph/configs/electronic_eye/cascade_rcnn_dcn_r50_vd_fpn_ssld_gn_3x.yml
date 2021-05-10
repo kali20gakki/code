@@ -12,7 +12,7 @@ weights: output/cascade_rcnn_dcn_r50_vd_fpn_ssld_gn_3x/model_final
 use_gpu: true
 log_iter: 20
 save_dir: output
-snapshot_epoch: 1
+snapshot_epoch: 12
 
 CascadeRCNN:
   backbone: ResNet
@@ -69,21 +69,23 @@ CascadeHead:
     sampling_ratio: 0
     aligned: True
   bbox_assigner: BBoxAssigner
+  bbox_loss: DIouLoss
+  cls_loss: SeesawLoss
 
 BBoxAssigner:
   batch_size_per_im: 512
   bg_thresh: 0.5
   fg_thresh: 0.5
   fg_fraction: 0.25
-  cascade_iou: [0.5, 0.65, 0.75]
+  cascade_iou: [0.5, 0.6, 0.7]
   use_random: True
 
 CascadeTwoFCHead:
-  mlp_dim: 1024
+  out_channel: 1024
 
 # CascadeXConvNormHead:
 #   num_convs: 4
-#   mlp_dim: 1024
+#   out_channel: 1024
 #   norm_type: gn
 
 BBoxPostProcess:
@@ -101,7 +103,7 @@ BBoxPostProcess:
 # TrainDataset:
 #   !COCODataSet
 #     image_dir: train
-#     anno_path: annotations/train_new.json
+#     anno_path: annotations/train.json
 #     dataset_dir: D:\PaddleDataset
 #     data_fields: ['image', 'gt_bbox', 'gt_class', 'is_crowd']
 

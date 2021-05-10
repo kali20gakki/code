@@ -4,37 +4,42 @@ _BASE_: [
   '_base_/multi_scale_reader_aug.yml',
 ]
 architecture: CascadeRCNN
-pretrain_weights: https://paddle-imagenet-models-name.bj.bcebos.com/HRNet_W18_C_pretrained.tar
+pretrain_weights: https://paddle-imagenet-models-name.bj.bcebos.com/ResNeXt101_vd_64x4d_pretrained.tar
 load_static_weights: True
-
-weights: output/cascade_rcnn_hrnetv2p_w18_3x_coco/model_final
+weights: output/cascade_rcnn_dcn_x101_vd_64x4d_fpn_gn_3x/model_final
 
 use_gpu: true
 log_iter: 20
 save_dir: output
-snapshot_epoch: 12
+snapshot_epoch: 1
 
 CascadeRCNN:
-  backbone: HRNet
-  neck: HRFPN
+  backbone: ResNet
+  neck: FPN
   rpn_head: RPNHead
   bbox_head: CascadeHead
   # post process
   bbox_post_process: BBoxPostProcess
 
-HRNet:
-  width: 18
+ResNet:
+  # index 0 stands for res2
+  depth: 50
+  variant: d
+  norm_type: bn
   freeze_at: 0
-  return_idx: [0, 1, 2, 3]
+  return_idx: [0,1,2,3]
+  num_stages: 4
+  dcn_v2_stages: [1,2,3]
+  lr_mult_list: [0.05, 0.05, 0.1, 0.15]
 
-HRFPN:
+FPN:
   out_channel: 256
-  share_conv: false
+  norm_type: gn
 
 RPNHead:
   anchor_generator:
     aspect_ratios: [0.5, 1.08, 1.5, 2.0]
-    anchor_sizes: [[4], [8], [16], [32], [64], [128]]
+    anchor_sizes: [[8], [16], [32], [64], [128]]
     strides: [4, 8, 16, 32, 64]
   rpn_target_assign:
     batch_size_per_im: 256
@@ -50,29 +55,31 @@ RPNHead:
     topk_after_collect: True
   test_proposal:
     min_size: 0.0
-    nms_thresh: 0.70
+    nms_thresh: 0.6
     pre_nms_top_n: 1000
     post_nms_top_n: 1000
-
-
-CascadeHead:
-  head: CascadeTwoFCHead
-  roi_extractor:
-    resolution: 7
-    sampling_ratio: 0
-    aligned: True
-  bbox_assigner: BBoxAssigner
 
 BBoxAssigner:
   batch_size_per_im: 512
   bg_thresh: 0.5
   fg_thresh: 0.5
   fg_fraction: 0.25
+  #cascade_iou: [0.5, 0.6, 0.7]
   cascade_iou: [0.5, 0.6, 0.7]
   use_random: True
 
-CascadeTwoFCHead:
+CascadeHead:
+  head: CascadeXConvNormHead
+  roi_extractor:
+    resolution: 7
+    sampling_ratio: 0
+    aligned: True
+  bbox_assigner: BBoxAssigner
+
+CascadeXConvNormHead:
+  num_convs: 4
   mlp_dim: 1024
+  norm_type: gn
 
 BBoxPostProcess:
   decode:
@@ -82,11 +89,6 @@ BBoxPostProcess:
     name: MultiClassNMS
     keep_top_k: 100
     score_threshold: 0.04
-    nms_threshold: 0.7
+    nms_threshold: 0.6
     normalized: true
 
-EvalDataset:
-  !COCODataSet
-    image_dir: val
-    anno_path: annotations/val.json
-    dataset_dir: D:\PaddleDataset

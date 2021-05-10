@@ -4,7 +4,8 @@ _BASE_: [
   '_base_/multi_scale_reader_aug.yml',
 ]
 architecture: CascadeRCNN
-pretrain_weights: https://paddledet.bj.bcebos.com/models/pretrained/ResNet50_vd_pretrained.pdparams
+#pretrain_weights: https://paddledet.bj.bcebos.com/models/pretrained/ResNet50_vd_pretrained.pdparams
+pretrain_weights: C:\Users\Mrtutu\Desktop\fsdownload\cascade_rcnn_dcn_r50_vd_2xbifpn_ssld_gn_3x.pdparams
 load_static_weights: True
 weights: output/cascade_rcnn_dcn_r50_vd_2xbifpn_ssld_gn_3x/model_final
 
@@ -66,12 +67,14 @@ RPNHead:
 
 
 CascadeHead:
-  head: CascadeXConvNormHead
+  head: CascadeTwoFCHead
   roi_extractor:
     resolution: 7
     sampling_ratio: 0
     aligned: True
   bbox_assigner: BBoxAssigner
+  bbox_loss: DIouLoss
+  # cls_loss: SeesawLoss
 
 BBoxAssigner:
   batch_size_per_im: 512
@@ -81,9 +84,12 @@ BBoxAssigner:
   cascade_iou: [0.5, 0.65, 0.75]
   use_random: True
 
+# CascadeTwoFCHead:
+#   out_channel: 1024
+
 CascadeXConvNormHead:
   num_convs: 4
-  mlp_dim: 1024
+  out_channel: 1024
   norm_type: gn
 
 BBoxPostProcess:
@@ -101,7 +107,7 @@ BBoxPostProcess:
 # TrainDataset:
 #   !COCODataSet
 #     image_dir: train
-#     anno_path: annotations/train_new.json
+#     anno_path: annotations/train.json
 #     dataset_dir: D:\PaddleDataset
 #     data_fields: ['image', 'gt_bbox', 'gt_class', 'is_crowd']
 

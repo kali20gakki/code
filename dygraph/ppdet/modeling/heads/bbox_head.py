@@ -12,9 +12,10 @@
 # See the License for the specific language governing permissions and   
 # limitations under the License.
 
+import numpy as np
+
 import paddle
 import paddle.nn as nn
-import numpy as np
 import paddle.nn.functional as F
 from paddle.nn.initializer import Normal, XavierUniform, KaimingNormal
 from paddle.regularizer import L2Decay
@@ -24,39 +25,48 @@ from ppdet.modeling import ops
 
 from .roi_extractor import RoIAlign
 from ..shape_spec import ShapeSpec
-from ..bbox_utils import bbox2delta, delta2bbox
+from ..bbox_utils import bbox2delta
 from ppdet.modeling.layers import ConvNormLayer
-from ..losses.iou_loss import *
+
 __all__ = ['TwoFCHead', 'XConvNormHead', 'BBoxHead']
 
 
 @register
 class TwoFCHead(nn.Layer):
-    def __init__(self, in_dim=256, mlp_dim=1024, resolution=7):
+    """
+    RCNN bbox head with Two fc layers to extract feature
+
+    Args:
+        in_channel (int): Input channel which can be derived by from_config
+        out_channel (int): Output channel
+        resolution (int): Resolution of input feature map, default 7
+    """
+
+    def __init__(self, in_channel=256, out_channel=1024, resolution=7):
         super(TwoFCHead, self).__init__()
-        self.in_dim = in_dim
-        self.mlp_dim = mlp_dim
-        fan = in_dim * resolution * resolution
+        self.in_channel = in_channel
+        self.out_channel = out_channel
+        fan = in_channel * resolution * resolution
         self.fc6 = nn.Linear(
-            in_dim * resolution * resolution,
-            mlp_dim,
+            in_channel * resolution * resolution,
+            out_channel,
             weight_attr=paddle.ParamAttr(
                 initializer=XavierUniform(fan_out=fan)))
 
         self.fc7 = nn.Linear(
-            mlp_dim,
-            mlp_dim,
+            out_channel,
+            out_channel,
             weight_attr=paddle.ParamAttr(initializer=XavierUniform()))
 
     @classmethod
     def from_config(cls, cfg, input_shape):
         s = input_shape
         s = s[0] if isinstance(s, (list, tuple)) else s
-        return {'in_dim': s.channels}
+        return {'in_channel': s.channels}
 
     @property
     def out_shape(self):
-        return [ShapeSpec(channels=self.mlp_dim, )]
+        return [ShapeSpec(channels=self.out_channel, )]
 
     def forward(self, rois_feat):
         rois_feat = paddle.flatten(rois_feat, start_axis=1, stop_axis=-1)
@@ -69,34 +79,36 @@ class TwoFCHead(nn.Layer):
 
 @register
 class XConvNormHead(nn.Layer):
+    __shared__ = ['norm_type', 'freeze_norm']
     """
     RCNN bbox head with serveral convolution layers
+
     Args:
-        in_dim(int): num of channels for the input rois_feat
-        num_convs(int): num of convolution layers for the rcnn bbox head
-        conv_dim(int): num of channels for the conv layers
-        mlp_dim(int): num of channels for the fc layers
-        resolution(int): resolution of the rois_feat
-        norm_type(str): norm type, 'gn' by defalut
-        freeze_norm(bool): whether to freeze the norm
-        stage_name(str): used in CascadeXConvNormHead, '' by default
+        in_channel (int): Input channels which can be derived by from_config
+        num_convs (int): The number of conv layers
+        conv_dim (int): The number of channels for the conv layers
+        out_channel (int): Output channels
+        resolution (int): Resolution of input feature map
+        norm_type (string): Norm type, bn, gn, sync_bn are available, 
+            default `gn`
+        freeze_norm (bool): Whether to freeze the norm
+        stage_name (string): Prefix name for conv layer,  '' by default
     """
-    __shared__ = ['norm_type', 'freeze_norm']
 
     def __init__(self,
-                 in_dim=256,
+                 in_channel=256,
                  num_convs=4,
                  conv_dim=256,
-                 mlp_dim=1024,
+                 out_channel=1024,
                  resolution=7,
                  norm_type='gn',
                  freeze_norm=False,
                  stage_name=''):
         super(XConvNormHead, self).__init__()
-        self.in_dim = in_dim
+        self.in_channel = in_channel
         self.num_convs = num_convs
         self.conv_dim = conv_dim
-        self.mlp_dim = mlp_dim
+        self.out_channel = out_channel
         self.norm_type = norm_type
         self.freeze_norm = freeze_norm
 
@@ -104,7 +116,7 @@ class XConvNormHead(nn.Layer):
         fan = conv_dim * 3 * 3
         initializer = KaimingNormal(fan_in=fan)
         for i in range(self.num_convs):
-            in_c = in_dim if i == 0 else conv_dim
+            in_c = in_channel if i == 0 else conv_dim
             head_conv_name = stage_name + 'bbox_head_conv{}'.format(i)
             head_conv = self.add_sublayer(
                 head_conv_name,
@@ -114,16 +126,14 @@ class XConvNormHead(nn.Layer):
                     filter_size=3,
                     stride=1,
                     norm_type=self.norm_type,
-                    norm_name=head_conv_name + '_norm',
                     freeze_norm=self.freeze_norm,
-                    initializer=initializer,
-                    name=head_conv_name))
+                    initializer=initializer))
             self.bbox_head_convs.append(head_conv)
 
         fan = conv_dim * resolution * resolution
         self.fc6 = nn.Linear(
             conv_dim * resolution * resolution,
-            mlp_dim,
+            out_channel,
             weight_attr=paddle.ParamAttr(
                 initializer=XavierUniform(fan_out=fan)),
             bias_attr=paddle.ParamAttr(
@@ -133,11 +143,11 @@ class XConvNormHead(nn.Layer):
     def from_config(cls, cfg, input_shape):
         s = input_shape
         s = s[0] if isinstance(s, (list, tuple)) else s
-        return {'in_dim': s.channels}
+        return {'in_channel': s.channels}
 
     @property
     def out_shape(self):
-        return [ShapeSpec(channels=self.mlp_dim, )]
+        return [ShapeSpec(channels=self.out_channel, )]
 
     def forward(self, rois_feat):
         for i in range(self.num_convs):
@@ -146,104 +156,24 @@ class XConvNormHead(nn.Layer):
         fc6 = F.relu(self.fc6(rois_feat))
         return fc6
 
-def softmax_focal_loss(logit, label, class_num, alpha = 0.25, gamma = 2.0, reduction='sum'):
-    """[summary]
-
-    Args:
-        logit ([type]): [description]
-        label ([type]): [description]
-        class_num ([type]): [description]
-    """
-    label_one_hot = F.one_hot(label, num_classes=class_num+1)
-    label_one_hot.stop_gradient = True
-
-    # one = paddle.to_tensor([1.], dtype='float32')
-    # fg_label = paddle.greater_equal(label_one_hot, one)
-    # fg_num = paddle.sum(paddle.cast(fg_label, dtype='float32'))
-    pred = F.softmax(logit)
-
-    pt = (1 - pred) * label_one_hot + pred * (1 - label_one_hot)
-    focal_weight = (alpha * label_one_hot + (1 - alpha) *(1 - label_one_hot)) * pt.pow(gamma)
-    smooth_label = F.label_smooth(label_one_hot)
-    loss = F.softmax_with_cross_entropy(pred, smooth_label, soft_label=True) * focal_weight
-
-    if reduction == 'sum':
-        loss = paddle.sum(loss)
-    elif reduction == 'mean':
-        loss = paddle.mean(loss)
-
-    return loss
-
-
-def diou_loss(pbox, gbox, iou_weight=1., eps=1e-10, use_complete_iou_loss=True):
-    x1, y1, x2, y2 = paddle.split(pbox, num_or_sections=4, axis=-1)
-    x1g, y1g, x2g, y2g = paddle.split(gbox, num_or_sections=4, axis=-1)
-    cx = (x1 + x2) / 2
-    cy = (y1 + y2) / 2
-    w = x2 - x1
-    h = y2 - y1
-
-    cxg = (x1g + x2g) / 2
-    cyg = (y1g + y2g) / 2
-    wg = x2g - x1g
-    hg = y2g - y1g
-
-    x2 = paddle.maximum(x1, x2)
-    y2 = paddle.maximum(y1, y2)
-
-    # A and B
-    xkis1 = paddle.maximum(x1, x1g)
-    ykis1 = paddle.maximum(y1, y1g)
-    xkis2 = paddle.minimum(x2, x2g)
-    ykis2 = paddle.minimum(y2, y2g)
-
-    # A or B
-    xc1 = paddle.minimum(x1, x1g)
-    yc1 = paddle.minimum(y1, y1g)
-    xc2 = paddle.maximum(x2, x2g)
-    yc2 = paddle.maximum(y2, y2g)
-
-    intsctk = (xkis2 - xkis1) * (ykis2 - ykis1)
-    intsctk = intsctk * paddle.greater_than(
-        xkis2, xkis1) * paddle.greater_than(ykis2, ykis1)
-    unionk = (x2 - x1) * (y2 - y1) + (x2g - x1g) * (y2g - y1g
-                                                    ) - intsctk + eps
-    iouk = intsctk / unionk
-
-    # DIOU term
-    dist_intersection = (cx - cxg) * (cx - cxg) + (cy - cyg) * (cy - cyg)
-    dist_union = (xc2 - xc1) * (xc2 - xc1) + (yc2 - yc1) * (yc2 - yc1)
-    diou_term = (dist_intersection + eps) / (dist_union + eps)
-
-    # CIOU term
-    ciou_term = 0
-    if use_complete_iou_loss:
-        ar_gt = wg / hg
-        ar_pred = w / h
-        arctan = paddle.atan(ar_gt) - paddle.atan(ar_pred)
-        ar_loss = 4. / np.pi / np.pi * arctan * arctan
-        alpha = ar_loss / (1 - iouk + ar_loss + eps)
-        alpha.stop_gradient = True
-        ciou_term = alpha * ar_loss
-
-    diou = paddle.mean((1 - iouk + ciou_term + diou_term) * iou_weight)
-
-    return diou
 
 
 @register
 class BBoxHead(nn.Layer):
     __shared__ = ['num_classes']
-    __inject__ = ['bbox_assigner']
+    __inject__ = ['bbox_assigner', 'bbox_loss', 'cls_loss']
     """
-    head (nn.Layer): Extract feature in bbox head
-    in_channel (int): Input channel after RoI extractor
-    roi_extractor (object): The module of RoI Extractor
-    bbox_assigner (object): The module of Box Assigner, label and sample the 
-                            box.
-    with_pool (bool): Whether to use pooling for the RoI feature.
-    num_classes (int): The number of classes
-    bbox_weight (List[float]): The weight to get the decode box 
+    RCNN bbox head
+
+    Args:
+        head (nn.Layer): Extract feature in bbox head
+        in_channel (int): Input channel after RoI extractor
+        roi_extractor (object): The module of RoI Extractor
+        bbox_assigner (object): The module of Box Assigner, label and sample the 
+            box.
+        with_pool (bool): Whether to use pooling for the RoI feature.
+        num_classes (int): The number of classes
+        bbox_weight (List[float]): The weight to get the decode box 
     """
 
     def __init__(self,
@@ -253,7 +183,9 @@ class BBoxHead(nn.Layer):
                  bbox_assigner='BboxAssigner',
                  with_pool=False,
                  num_classes=80,
-                 bbox_weight=[10., 10., 5., 5.]):
+                 bbox_weight=[10., 10., 5., 5.],
+                 cls_loss=None,
+                 bbox_loss=None):
         super(BBoxHead, self).__init__()
         self.head = head
         self.roi_extractor = roi_extractor
@@ -264,8 +196,9 @@ class BBoxHead(nn.Layer):
         self.with_pool = with_pool
         self.num_classes = num_classes
         self.bbox_weight = bbox_weight
+        self.cls_loss = cls_loss
+        self.bbox_loss = bbox_loss
 
-        lr_factor = 1.
         self.bbox_score = nn.Linear(
             in_channel,
             self.num_classes + 1,
@@ -337,18 +270,13 @@ class BBoxHead(nn.Layer):
             tgt_labels) > 1 else tgt_labels[0]
         tgt_labels = tgt_labels.cast('int64')
         tgt_labels.stop_gradient = True
-        
-        # CE -> Focal loss
-        loss_bbox_cls = F.cross_entropy(
-            input=scores, label=tgt_labels, reduction='mean')
 
-        # label_smooth softmax_with_cross_entropy
-        # label_one_hot = F.one_hot(tgt_labels, num_classes=self.num_classes+1)
-        # smooth_label = F.label_smooth(label_one_hot)
-        # smooth_label.stop_gradient = True
-        # loss_bbox_cls = F.softmax_with_cross_entropy(scores, smooth_label, soft_label=True)
-
-        #loss_bbox_cls = softmax_focal_loss(scores, tgt_labels, self.num_classes)
+        # cls reg 
+        if self.cls_loss is None: # CE
+            loss_bbox_cls = F.cross_entropy(
+                input=scores, label=tgt_labels, reduction='mean')
+        else:
+            loss_bbox_cls = self.cls_loss(scores, tgt_labels, self.num_classes)
 
         # bbox reg
         cls_agnostic_bbox_reg = deltas.shape[1] == 4
@@ -383,21 +311,57 @@ class BBoxHead(nn.Layer):
             reg_delta = paddle.gather_nd(reg_delta, reg_inds).reshape([-1, 4])
 
         rois = paddle.concat(rois) if len(rois) > 1 else rois[0]
-        #reg_bboxes = delta2bbox(deltas, rois, bbox_weight)
         tgt_bboxes = paddle.concat(tgt_bboxes) if len(
             tgt_bboxes) > 1 else tgt_bboxes[0]
 
         reg_target = bbox2delta(rois, tgt_bboxes, bbox_weight)
         reg_target = paddle.gather(reg_target, fg_inds)
         reg_target.stop_gradient = True
-        loss_bbox_reg = paddle.abs(reg_delta - reg_target).sum(
-        ) / tgt_labels.shape[0]
 
+        if self.bbox_loss is not None:
+            reg_delta = self.bbox_transform(reg_delta)
+            reg_target = self.bbox_transform(reg_target)
+            loss_bbox_reg = self.bbox_loss(
+                reg_delta, reg_target).sum() / tgt_labels.shape[0]
+            loss_bbox_reg *= self.num_classes
+        else:
+            loss_bbox_reg = paddle.abs(reg_delta - reg_target).sum(
+            ) / tgt_labels.shape[0]
 
         loss_bbox[cls_name] = loss_bbox_cls * loss_weight
         loss_bbox[reg_name] = loss_bbox_reg * loss_weight
 
         return loss_bbox
+
+    def bbox_transform(self, deltas, weights=[0.1, 0.1, 0.2, 0.2]):
+        wx, wy, ww, wh = weights
+
+        deltas = paddle.reshape(deltas, shape=(0, -1, 4))
+
+        dx = paddle.slice(deltas, axes=[2], starts=[0], ends=[1]) * wx
+        dy = paddle.slice(deltas, axes=[2], starts=[1], ends=[2]) * wy
+        dw = paddle.slice(deltas, axes=[2], starts=[2], ends=[3]) * ww
+        dh = paddle.slice(deltas, axes=[2], starts=[3], ends=[4]) * wh
+
+        dw = paddle.clip(dw, -1.e10, np.log(1000. / 16))
+        dh = paddle.clip(dh, -1.e10, np.log(1000. / 16))
+
+        pred_ctr_x = dx
+        pred_ctr_y = dy
+        pred_w = paddle.exp(dw)
+        pred_h = paddle.exp(dh)
+
+        x1 = pred_ctr_x - 0.5 * pred_w
+        y1 = pred_ctr_y - 0.5 * pred_h
+        x2 = pred_ctr_x + 0.5 * pred_w
+        y2 = pred_ctr_y + 0.5 * pred_h
+
+        x1 = paddle.reshape(x1, shape=(-1, ))
+        y1 = paddle.reshape(y1, shape=(-1, ))
+        x2 = paddle.reshape(x2, shape=(-1, ))
+        y2 = paddle.reshape(y2, shape=(-1, ))
+
+        return paddle.concat([x1, y1, x2, y2])
 
     def get_prediction(self, score, delta):
         bbox_prob = F.softmax(score)

@@ -45,7 +45,7 @@ BiFPN:
 RPNHead:
   anchor_generator:
     aspect_ratios: [0.5, 1.08, 1.5, 2.0]
-    anchor_sizes: [[4], [8], [16], [32], [64], [128]]
+    anchor_sizes: [[8], [16], [32], [64], [128]]
     strides: [4, 8, 16, 32, 64]
   rpn_target_assign:
     batch_size_per_im: 256
@@ -74,17 +74,20 @@ BBoxAssigner:
   use_random: True
 
 CascadeHead:
-  head: CascadeXConvNormHead
+  head: CascadeTwoFCHead
   roi_extractor:
     resolution: 7
     sampling_ratio: 0
     aligned: True
   bbox_assigner: BBoxAssigner
 
-CascadeXConvNormHead:
-  num_convs: 4
-  mlp_dim: 1024
-  norm_type: gn
+CascadeTwoFCHead:
+  out_channel: 1024
+
+# CascadeXConvNormHead:
+#   num_convs: 4
+#   out_channel: 1024
+#   norm_type: gn
 
 BBoxPostProcess:
   decode:

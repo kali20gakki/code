@@ -73,6 +73,7 @@ CascadeHead:
     sampling_ratio: 0
     aligned: True
   bbox_assigner: BBoxAssigner
+  bbox_loss: DIouLoss
 
 BBoxAssigner:
   batch_size_per_im: 512

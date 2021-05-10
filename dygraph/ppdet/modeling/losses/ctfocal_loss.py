@@ -20,7 +20,7 @@ import paddle
 import paddle.nn.functional as F
 from ppdet.core.workspace import register, serializable
 
-__all__ = ['CTFocalLoss']
+__all__ = ['CTFocalLoss', 'SoftmaxFocalLoss', 'SigmoidFocalLoss']
 
 
 @register
@@ -65,3 +65,82 @@ class CTFocalLoss(object):
         ct_focal_loss = (pos_loss + neg_loss) / (
             fg_num + paddle.cast(fg_num == 0, 'float32'))
         return ct_focal_loss * self.loss_weight
+
+
+def softmax_focal_loss(logit, label, class_num, alpha = 0.25, gamma = 2.0, reduction='sum'):
+    """[summary]
+    Args:
+        logit ([type]): [description]
+        label ([type]): [description]
+        class_num ([type]): [description]
+    """
+    label_one_hot = F.one_hot(label, num_classes=class_num+1)
+    label_one_hot.stop_gradient = True
+
+    # one = paddle.to_tensor([1.], dtype='float32')
+    # fg_label = paddle.greater_equal(label_one_hot, one)
+    # fg_num = paddle.sum(paddle.cast(fg_label, dtype='float32'))
+    pred = F.softmax(logit)
+
+    pt = (1 - pred) * label_one_hot + pred * (1 - label_one_hot)
+    focal_weight = (alpha * label_one_hot + (1 - alpha) *(1 - label_one_hot)) * pt.pow(gamma)
+    smooth_label = F.label_smooth(label_one_hot)
+    loss = F.softmax_with_cross_entropy(pred, smooth_label, soft_label=True) * focal_weight
+
+    if reduction == 'sum':
+        loss = paddle.sum(loss)
+    elif reduction == 'mean':
+        loss = paddle.mean(loss)
+
+    return loss
+
+
+@register
+@serializable
+class SoftmaxFocalLoss(object):
+
+    def __init__(self, loss_weight=1., alpha = 0.25, gamma = 2.0, reduction='sum'):
+        self.loss_weight = loss_weight
+        self.alpha = alpha
+        self.gamma = gamma
+        self.reduction = reduction
+
+    def __call__(self, logit, label, class_num):
+        print(label)
+        label_one_hot = F.one_hot(label, num_classes=class_num+1)
+        label_one_hot.stop_gradient = True
+
+        pred = F.softmax(logit)
+        pt = (1 - pred) * label_one_hot + pred * (1 - label_one_hot)
+        focal_weight = (self.alpha * label_one_hot + (1 - self.alpha) *(1 - label_one_hot)) * pt.pow(self.gamma)
+        smooth_label = F.label_smooth(label_one_hot)
+        loss = F.softmax_with_cross_entropy(pred, smooth_label, soft_label=True) * focal_weight
+
+        if self.reduction == 'sum':
+            loss = paddle.sum(loss)
+        elif self.reduction == 'mean':
+            loss = paddle.mean(loss)
+
+        return loss
+
+
+@register
+@serializable
+class SigmoidFocalLoss(object):
+
+    def __init__(self, loss_weight=1., alpha = 0.25, gamma = 2.0, reduction='mean'):
+        self.alpha = alpha
+        self.gamma = gamma
+        self.reduction = reduction
+
+    def __call__(self, logit, label, class_num):
+        label_one_hot = F.one_hot(label, num_classes=class_num+1)
+        label_one_hot.stop_gradient = True
+
+        loss = F.sigmoid_focal_loss(logit, label_one_hot, 
+                                    alpha=self.alpha, 
+                                    gamma=self.gamma,
+                                    normalizer=label_one_hot[0],
+                                    reduction=self.reduction)
+
+        return loss

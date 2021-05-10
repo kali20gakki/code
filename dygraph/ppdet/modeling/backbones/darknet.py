@@ -18,7 +18,7 @@ import paddle.nn.functional as F
 from paddle import ParamAttr
 from paddle.regularizer import L2Decay
 from ppdet.core.workspace import register, serializable
-from ppdet.modeling.ops import batch_norm
+from ppdet.modeling.ops import batch_norm, mish
 from ..shape_spec import ShapeSpec
 
 __all__ = ['DarkNet', 'ConvBNLayer']
@@ -35,7 +35,23 @@ class ConvBNLayer(nn.Layer):
                  norm_type='bn',
                  norm_decay=0.,
                  act="leaky",
-                 name=None):
+                 data_format='NCHW',
+                 name=''):
+        """
+        conv + bn + activation layer
+
+        Args:
+            ch_in (int): input channel
+            ch_out (int): output channel
+            filter_size (int): filter size, default 3
+            stride (int): stride, default 1
+            groups (int): number of groups of conv layer, default 1
+            padding (int): padding size, default 0
+            norm_type (str): batch norm type, default bn
+            norm_decay (str): decay for weight and bias of batch norm layer, default 0.
+            act (str): activation function type, default 'leaky', which means leaky_relu
+            data_format (str): data format, NCHW or NHWC
+        """
         super(ConvBNLayer, self).__init__()
 
         self.conv = nn.Conv2D(
@@ -45,10 +61,13 @@ class ConvBNLayer(nn.Layer):
             stride=stride,
             padding=padding,
             groups=groups,
-            weight_attr=ParamAttr(name=name + '.conv.weights'),
+            data_format=data_format,
             bias_attr=False)
         self.batch_norm = batch_norm(
-            ch_out, norm_type=norm_type, norm_decay=norm_decay, name=name)
+            ch_out,
+            norm_type=norm_type,
+            norm_decay=norm_decay,
+            data_format=data_format)
         self.act = act
 
     def forward(self, inputs):
@@ -56,6 +75,8 @@ class ConvBNLayer(nn.Layer):
         out = self.batch_norm(out)
         if self.act == 'leaky':
             out = F.leaky_relu(out, 0.1)
+        elif self.act == 'mish':
+            out = mish(out)
         return out
 
 
@@ -68,7 +89,20 @@ class DownSample(nn.Layer):
                  padding=1,
                  norm_type='bn',
                  norm_decay=0.,
-                 name=None):
+                 data_format='NCHW'):
+        """
+        downsample layer
+
+        Args:
+            ch_in (int): input channel
+            ch_out (int): output channel
+            filter_size (int): filter size, default 3
+            stride (int): stride, default 2
+            padding (int): padding size, default 1
+            norm_type (str): batch norm type, default bn
+            norm_decay (str): decay for weight and bias of batch norm layer, default 0.
+            data_format (str): data format, NCHW or NHWC
+        """
 
         super(DownSample, self).__init__()
 
@@ -80,7 +114,7 @@ class DownSample(nn.Layer):
             padding=padding,
             norm_type=norm_type,
             norm_decay=norm_decay,
-            name=name)
+            data_format=data_format)
         self.ch_out = ch_out
 
     def forward(self, inputs):
@@ -89,7 +123,23 @@ class DownSample(nn.Layer):
 
 
 class BasicBlock(nn.Layer):
-    def __init__(self, ch_in, ch_out, norm_type='bn', norm_decay=0., name=None):
+    def __init__(self,
+                 ch_in,
+                 ch_out,
+                 norm_type='bn',
+                 norm_decay=0.,
+                 data_format='NCHW'):
+        """
+        BasicBlock layer of DarkNet
+
+        Args:
+            ch_in (int): input channel
+            ch_out (int): output channel
+            norm_type (str): batch norm type, default bn
+            norm_decay (str): decay for weight and bias of batch norm layer, default 0.
+            data_format (str): data format, NCHW or NHWC
+        """
+
         super(BasicBlock, self).__init__()
 
         self.conv1 = ConvBNLayer(
@@ -100,7 +150,7 @@ class BasicBlock(nn.Layer):
             padding=0,
             norm_type=norm_type,
             norm_decay=norm_decay,
-            name=name + '.0')
+            data_format=data_format)
         self.conv2 = ConvBNLayer(
             ch_in=ch_out,
             ch_out=ch_out * 2,
@@ -109,7 +159,7 @@ class BasicBlock(nn.Layer):
             padding=1,
             norm_type=norm_type,
             norm_decay=norm_decay,
-            name=name + '.1')
+            data_format=data_format)
 
     def forward(self, inputs):
         conv1 = self.conv1(inputs)
@@ -125,7 +175,20 @@ class Blocks(nn.Layer):
                  count,
                  norm_type='bn',
                  norm_decay=0.,
-                 name=None):
+                 name=None,
+                 data_format='NCHW'):
+        """
+        Blocks layer, which consist of some BaickBlock layers
+
+        Args:
+            ch_in (int): input channel
+            ch_out (int): output channel
+            count (int): number of BasicBlock layer
+            norm_type (str): batch norm type, default bn
+            norm_decay (str): decay for weight and bias of batch norm layer, default 0.
+            name (str): layer name
+            data_format (str): data format, NCHW or NHWC
+        """
         super(Blocks, self).__init__()
 
         self.basicblock0 = BasicBlock(
@@ -133,7 +196,7 @@ class Blocks(nn.Layer):
             ch_out,
             norm_type=norm_type,
             norm_decay=norm_decay,
-            name=name + '.0')
+            data_format=data_format)
         self.res_out_list = []
         for i in range(1, count):
             block_name = '{}.{}'.format(name, i)
@@ -144,7 +207,7 @@ class Blocks(nn.Layer):
                     ch_out,
                     norm_type=norm_type,
                     norm_decay=norm_decay,
-                    name=block_name))
+                    data_format=data_format))
             self.res_out_list.append(res_out)
         self.ch_out = ch_out
 
@@ -161,7 +224,7 @@ DarkNet_cfg = {53: ([1, 2, 8, 8, 4])}
 @register
 @serializable
 class DarkNet(nn.Layer):
-    __shared__ = ['norm_type']
+    __shared__ = ['norm_type', 'data_format']
 
     def __init__(self,
                  depth=53,
@@ -169,7 +232,20 @@ class DarkNet(nn.Layer):
                  return_idx=[2, 3, 4],
                  num_stages=5,
                  norm_type='bn',
-                 norm_decay=0.):
+                 norm_decay=0.,
+                 data_format='NCHW'):
+        """
+        Darknet, see https://pjreddie.com/darknet/yolo/
+
+        Args:
+            depth (int): depth of network
+            freeze_at (int): freeze the backbone at which stage
+            filter_size (int): filter size, default 3
+            return_idx (list): index of stages whose feature maps are returned
+            norm_type (str): batch norm type, default bn
+            norm_decay (str): decay for weight and bias of batch norm layer, default 0.
+            data_format (str): data format, NCHW or NHWC
+        """
         super(DarkNet, self).__init__()
         self.depth = depth
         self.freeze_at = freeze_at
@@ -185,14 +261,14 @@ class DarkNet(nn.Layer):
             padding=1,
             norm_type=norm_type,
             norm_decay=norm_decay,
-            name='yolo_input')
+            data_format=data_format)
 
         self.downsample0 = DownSample(
             ch_in=32,
             ch_out=32 * 2,
             norm_type=norm_type,
             norm_decay=norm_decay,
-            name='yolo_input.downsample')
+            data_format=data_format)
 
         self._out_channels = []
         self.darknet_conv_block_list = []
@@ -208,6 +284,7 @@ class DarkNet(nn.Layer):
                     stage,
                     norm_type=norm_type,
                     norm_decay=norm_decay,
+                    data_format=data_format,
                     name=name))
             self.darknet_conv_block_list.append(conv_block)
             if i in return_idx:
@@ -221,7 +298,7 @@ class DarkNet(nn.Layer):
                     ch_out=32 * (2**(i + 2)),
                     norm_type=norm_type,
                     norm_decay=norm_decay,
-                    name=down_name))
+                    data_format=data_format))
             self.downsample_list.append(downsample)
 
     def forward(self, inputs):

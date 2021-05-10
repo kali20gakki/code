@@ -93,6 +93,7 @@ class SERes5Head(nn.Layer):
                  std_senet=True):
         """
         SERes5Head layer
+
         Args:
             depth (int): SENet depth, should be 50, 101, 152
             variant (str): ResNet variant, supports 'a', 'b', 'c', 'd' currently

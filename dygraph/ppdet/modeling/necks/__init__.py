@@ -17,8 +17,8 @@ from . import yolo_fpn
 from . import hrfpn
 from . import ttf_fpn
 
-from .bifpn import *
 from .fpn import *
 from .yolo_fpn import *
 from .hrfpn import *
 from .ttf_fpn import *
+from .bifpn import *
