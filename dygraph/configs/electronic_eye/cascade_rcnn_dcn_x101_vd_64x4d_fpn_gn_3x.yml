@@ -11,7 +11,7 @@ weights: output/cascade_rcnn_dcn_x101_vd_64x4d_fpn_gn_3x/model_final
 use_gpu: true
 log_iter: 20
 save_dir: output
-snapshot_epoch: 1
+snapshot_epoch: 6
 
 CascadeRCNN:
   backbone: ResNet
@@ -22,18 +22,18 @@ CascadeRCNN:
   bbox_post_process: BBoxPostProcess
 
 ResNet:
-  # for ResNeXt: groups, base_width, base_channels
   depth: 101
   groups: 64
   base_width: 4
-  base_channels: 64
   variant: d
   norm_type: bn
   freeze_at: 0
   return_idx: [0,1,2,3]
   num_stages: 4
+  dcn_v2_stages: [1,2,3]
   dcn_v2_stages: [1,2,3] # C3-C5
   lr_mult_list: [0.05, 0.05, 0.1, 0.15]
+
 
 FPN:
   out_channel: 256
@@ -42,7 +42,7 @@ FPN:
 RPNHead:
   anchor_generator:
     aspect_ratios: [0.5, 1.08, 1.5, 2.0]
-    anchor_sizes: [[4], [8], [16], [32], [64], [128]]
+    anchor_sizes: [[8], [16], [32], [64], [128]]
     strides: [4, 8, 16, 32, 64]
   rpn_target_assign:
     batch_size_per_im: 256
@@ -78,6 +78,12 @@ CascadeHead:
     sampling_ratio: 0
     aligned: True
   bbox_assigner: BBoxAssigner
+  bbox_loss: DIouLoss
+  cls_loss: SeesawLoss
+
+DIouLoss:
+  loss_weight: 10.0
+  use_complete_iou_loss: True # ciou
 
 CascadeTwoFCHead:
   out_channel: 1024
@@ -86,6 +92,16 @@ CascadeTwoFCHead:
 #   num_convs: 4
 #   out_channel: 1024
 #   norm_type: gn
+
+LearningRate:
+  base_lr: 0.00125 # 4 GPU 0.005 8GPU 0.01
+  schedulers:
+  - !PiecewiseDecay
+    gamma: 0.1
+    milestones: [31, 35]
+  - !LinearWarmup
+    start_factor: 0.001
+    steps: 1000
 
 BBoxPostProcess:
   decode:
@@ -101,7 +117,7 @@ BBoxPostProcess:
 TrainDataset:
   !COCODataSet
     image_dir: train
-    anno_path: annotations/train_new.json
+    anno_path: annotations/train.json
     dataset_dir: D:\PaddleDataset
     data_fields: ['image', 'gt_bbox', 'gt_class', 'is_crowd']
 

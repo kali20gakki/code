@@ -80,6 +80,12 @@ CascadeHead:
     sampling_ratio: 0
     aligned: True
   bbox_assigner: BBoxAssigner
+  bbox_loss: DIouLoss
+  cls_loss: SeesawLoss
+  
+DIouLoss:
+  loss_weight: 10.0
+  use_complete_iou_loss: True # ciou
 
 CascadeTwoFCHead:
   out_channel: 1024

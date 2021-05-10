@@ -75,6 +75,10 @@ CascadeHead:
   bbox_assigner: BBoxAssigner
   bbox_loss: DIouLoss
 
+DIouLoss:
+  loss_weight: 10.0
+  use_complete_iou_loss: false # diou
+
 BBoxAssigner:
   batch_size_per_im: 512
   bg_thresh: 0.5
