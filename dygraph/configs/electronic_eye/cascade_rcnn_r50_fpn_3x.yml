@@ -68,7 +68,7 @@ CascadeHead:
   cls_loss: SoftmaxFocalLoss
 
 DIouLoss:
-  loss_weight: 10.0
+  loss_weight: 1.0
   use_complete_iou_loss: True # ciou
 
 BBoxAssigner:

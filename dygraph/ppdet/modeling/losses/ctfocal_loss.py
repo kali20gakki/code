@@ -67,7 +67,7 @@ class CTFocalLoss(object):
         return ct_focal_loss * self.loss_weight
 
 
-def softmax_focal_loss(logit, label, class_num, alpha = 0.25, gamma = 2.0, reduction='sum'):
+def softmax_focal_loss(logit, label, class_num, alpha = 0.25, gamma = 2.0, reduction='mean'):
     """[summary]
     Args:
         logit ([type]): [description]
