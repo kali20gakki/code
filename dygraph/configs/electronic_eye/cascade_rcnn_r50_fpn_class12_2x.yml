@@ -1,19 +1,17 @@
 _BASE_: [
   '_base_/coco_detection.yml',
-  '_base_/optimizer_3x.yml',
+  '_base_/optimizer_2x.yml',
   '_base_/multi_scale_reader_aug.yml',
 ]
 architecture: CascadeRCNN
 pretrain_weights: https://paddledet.bj.bcebos.com/models/pretrained/ResNet50_vd_pretrained.pdparams
-#pretrain_weights: https://paddle-imagenet-models-name.bj.bcebos.com/ResNet50_cos_pretrained.tar
 load_static_weights: True
-weights: output/cascade_rcnn_dcn_r50_vd_fpn_ssld_gn_3x/model_final
+weights: output/cascade_rcnn_r50_fpn_class12_2x/model_final
 
 use_gpu: true
-log_iter: 10
+log_iter: 20
 save_dir: output
-snapshot_epoch: 12
-
+snapshot_epoch: 6
 
 CascadeRCNN:
   backbone: ResNet
@@ -89,7 +87,6 @@ BBoxPostProcess:
     score_threshold: 0.04
     nms_threshold: 0.7  
     normalized: true
-
 
 num_classes: 2
 TrainDataset:
