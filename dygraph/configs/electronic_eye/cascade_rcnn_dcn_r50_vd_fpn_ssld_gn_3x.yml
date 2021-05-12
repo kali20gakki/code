@@ -32,11 +32,11 @@ ResNet:
   return_idx: [0,1,2,3]
   num_stages: 4
   dcn_v2_stages: [1,2,3]
-  lr_mult_list: [0.05, 0.05, 0.1, 0.15]
+  #lr_mult_list: [0.05, 0.05, 0.1, 0.15]
 
 FPN:
   out_channel: 256
-  norm_type: gn
+  #norm_type: gn
 
 RPNHead:
   anchor_generator:
@@ -70,12 +70,11 @@ CascadeHead:
     sampling_ratio: 0
     aligned: True
   bbox_assigner: BBoxAssigner
-  bbox_loss: DIouLoss
-  cls_loss: SoftmaxFocalLoss
+#   bbox_loss: DIouLoss
 
-DIouLoss:
-  loss_weight: 10.0
-  use_complete_iou_loss: True # ciou
+# DIouLoss:
+#   loss_weight: 10.0
+#   use_complete_iou_loss: True # ciou
 
 BBoxAssigner:
   batch_size_per_im: 512
@@ -107,10 +106,11 @@ BBoxPostProcess:
 LearningRate:
   base_lr: 0.00125 # 4 GPU 0.005 8GPU 0.01
 
+num_classes: 2
 TrainDataset:
   !COCODataSet
     image_dir: train
-    anno_path: annotations/train.json
+    anno_path: annotations/train_class12.json
     dataset_dir: D:\PaddleDataset
     data_fields: ['image', 'gt_bbox', 'gt_class', 'is_crowd']
 
@@ -119,3 +119,4 @@ EvalDataset:
     image_dir: val
     anno_path: annotations/val.json
     dataset_dir: D:\PaddleDataset
+

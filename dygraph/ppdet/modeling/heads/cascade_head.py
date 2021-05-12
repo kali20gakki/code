@@ -34,7 +34,6 @@ class CascadeTwoFCHead(nn.Layer):
     __shared__ = ['num_cascade_stage']
     """
     Cascade RCNN bbox head  with Two fc layers to extract feature
-
     Args:
         in_channel (int): Input channel which can be derived by from_config
         out_channel (int): Output channel
@@ -78,7 +77,6 @@ class CascadeXConvNormHead(nn.Layer):
     __shared__ = ['norm_type', 'freeze_norm', 'num_cascade_stage']
     """
     Cascade RCNN bbox head with serveral convolution layers
-
     Args:
         in_channel (int): Input channels which can be derived by from_config
         num_convs (int): The number of conv layers
@@ -137,10 +135,9 @@ class CascadeXConvNormHead(nn.Layer):
 @register
 class CascadeHead(BBoxHead):
     __shared__ = ['num_classes', 'num_cascade_stages']
-    __inject__ = ['bbox_assigner', 'bbox_loss', 'cls_loss']
+    __inject__ = ['bbox_assigner', 'bbox_loss']
     """
     Cascade RCNN bbox head
-
     Args:
         head (nn.Layer): Extract feature in bbox head
         in_channel (int): Input channel after RoI extractor
@@ -162,7 +159,6 @@ class CascadeHead(BBoxHead):
                  bbox_weight=[[10., 10., 5., 5.], [20.0, 20.0, 10.0, 10.0],
                               [30.0, 30.0, 15.0, 15.0]],
                  num_cascade_stages=3,
-                 cls_loss=None,
                  bbox_loss=None):
         nn.Layer.__init__(self, )
         self.head = head
@@ -174,7 +170,6 @@ class CascadeHead(BBoxHead):
         self.num_classes = num_classes
         self.bbox_weight = bbox_weight
         self.num_cascade_stages = num_cascade_stages
-        self.cls_loss = cls_loss
         self.bbox_loss = bbox_loss
 
         self.bbox_score_list = []

@@ -35,7 +35,6 @@ __all__ = ['TwoFCHead', 'XConvNormHead', 'BBoxHead']
 class TwoFCHead(nn.Layer):
     """
     RCNN bbox head with Two fc layers to extract feature
-
     Args:
         in_channel (int): Input channel which can be derived by from_config
         out_channel (int): Output channel
@@ -82,7 +81,6 @@ class XConvNormHead(nn.Layer):
     __shared__ = ['norm_type', 'freeze_norm']
     """
     RCNN bbox head with serveral convolution layers
-
     Args:
         in_channel (int): Input channels which can be derived by from_config
         num_convs (int): The number of conv layers
@@ -157,14 +155,12 @@ class XConvNormHead(nn.Layer):
         return fc6
 
 
-
 @register
 class BBoxHead(nn.Layer):
     __shared__ = ['num_classes']
-    __inject__ = ['bbox_assigner', 'bbox_loss', 'cls_loss']
+    __inject__ = ['bbox_assigner', 'bbox_loss']
     """
     RCNN bbox head
-
     Args:
         head (nn.Layer): Extract feature in bbox head
         in_channel (int): Input channel after RoI extractor
@@ -184,7 +180,6 @@ class BBoxHead(nn.Layer):
                  with_pool=False,
                  num_classes=80,
                  bbox_weight=[10., 10., 5., 5.],
-                 cls_loss=None,
                  bbox_loss=None):
         super(BBoxHead, self).__init__()
         self.head = head
@@ -196,7 +191,6 @@ class BBoxHead(nn.Layer):
         self.with_pool = with_pool
         self.num_classes = num_classes
         self.bbox_weight = bbox_weight
-        self.cls_loss = cls_loss
         self.bbox_loss = bbox_loss
 
         self.bbox_score = nn.Linear(
@@ -271,16 +265,11 @@ class BBoxHead(nn.Layer):
         tgt_labels = tgt_labels.cast('int64')
         tgt_labels.stop_gradient = True
 
-        # cls reg 
-        if self.cls_loss is None: # CE
-            loss_bbox_cls = F.cross_entropy(
-                input=scores, label=tgt_labels, reduction='mean')
-        else:
-            loss_bbox_cls = self.cls_loss(scores, tgt_labels, self.num_classes)
-
+        loss_bbox_cls = F.cross_entropy(
+            input=scores, label=tgt_labels, reduction='mean')
+            
         # bbox reg
         cls_agnostic_bbox_reg = deltas.shape[1] == 4
-
         fg_inds = paddle.nonzero(
             paddle.logical_and(tgt_labels >= 0, tgt_labels <
                                self.num_classes)).flatten()
@@ -309,7 +298,6 @@ class BBoxHead(nn.Layer):
 
             reg_delta = paddle.gather(deltas, fg_inds)
             reg_delta = paddle.gather_nd(reg_delta, reg_inds).reshape([-1, 4])
-
         rois = paddle.concat(rois) if len(rois) > 1 else rois[0]
         tgt_bboxes = paddle.concat(tgt_bboxes) if len(
             tgt_bboxes) > 1 else tgt_bboxes[0]

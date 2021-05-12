@@ -2,7 +2,6 @@ metric: COCO
 num_classes: 3
 
 TrainDataset:
-
   !COCODataSet
     image_dir: train
     anno_path: annotations/train_new.json

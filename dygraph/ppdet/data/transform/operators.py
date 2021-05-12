@@ -176,13 +176,12 @@ class RoadEnhance(BaseOperator):
                             iaa.GammaContrast((0.5, 2.0)),
                             iaa.MultiplyAndAddToBrightness(mul=(0.5, 1.5), add=(-30, 30)),
                             iaa.MotionBlur(k=7, angle=[-45, 45]),
-                            #iaa.Snowflakes(flake_size=(0.5, 0.75), speed=(0.001, 0.03)),
-                            # iaa.Rain(drop_size=(0.10, 0.20)),
+                            iaa.Snowflakes(flake_size=(0.5, 0.75), speed=(0.001, 0.03)),
+                            iaa.Rain(drop_size=(0.10, 0.20)),
                         ]
                         )
         )]
         self.seq = iaa.Sequential(seq_list, random_order=True)
-
 
     def apply(self, sample, context=None):
         try:
@@ -225,7 +224,13 @@ class MinorityEnhance(BaseOperator):
             seg_path = os.path.join(self.seg_dir, seg_file)
             obj_path = os.path.join(self.images_dir, seg_file.split('.')[0]+'.png')
             polygon = get_polygon(seg_path)
-            obj_img = cv2.imread(obj_path)
+            #obj_img = cv2.imread(obj_path)
+            
+            with open(obj_path, 'rb') as f:
+                obj_img = f.read()
+            data = np.frombuffer(obj_img, dtype='uint8')
+            obj_img = cv2.imdecode(data, 1)  # BGR mode, but need RGB mode
+            obj_img = cv2.cvtColor(obj_img, cv2.COLOR_BGR2RGB)
 
             bg_img, box = paste_obj2img(bg_img, obj_img, polygon, point, 
                                         random.randint(bbox_size_range[0], bbox_size_range[1]))
@@ -237,14 +242,14 @@ class MinorityEnhance(BaseOperator):
                 box = np.array([box], dtype='float32')
                 sample['gt_bbox'] = np.concatenate((sample['gt_bbox'], box), axis=0)
                 # add cls
-                sample['gt_class'] = np.concatenate((sample['gt_class'], np.array([[2]])), axis=0)
+                sample['gt_class'] = np.concatenate((sample['gt_class'], np.array([[0]])), axis=0)
                 # add img
                 sample['image'] = bg_img
         
         return sample
 
     def apply(self, sample, context=None):
-        if random.randint(1,10) < 6:  # 0.6
+        if random.randint(1,10) < self.prob:  # 0.6
             try:
                 sample = self._apply(sample)
             except:
