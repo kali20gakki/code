@@ -31,7 +31,6 @@ __all__ = ['FPN']
 class FPN(nn.Layer):
     """
     Feature Pyramid Network, see https://arxiv.org/abs/1612.03144
-
     Args:
         in_channels (list[int]): input channels of each level which can be 
             derived from the output shape of backbone by from_config

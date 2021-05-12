@@ -270,6 +270,7 @@ class BBoxHead(nn.Layer):
             
         # bbox reg
         cls_agnostic_bbox_reg = deltas.shape[1] == 4
+        # 前景目标索引
         fg_inds = paddle.nonzero(
             paddle.logical_and(tgt_labels >= 0, tgt_labels <
                                self.num_classes)).flatten()

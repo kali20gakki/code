@@ -37,8 +37,8 @@ FPN:
 RPNHead:
   anchor_generator:
     # N = aspect_ratios * anchor_sizes
-    aspect_ratios: [0.5, 1.08, 1.8]
-    anchor_sizes: [[8], [16], [32], [64], [128]]
+    aspect_ratios: [0.5, 1.0, 2.0]
+    anchor_sizes: [[16], [32], [64], [128], [256]]
     strides: [4, 8, 16, 32, 64]
   rpn_target_assign:
     batch_size_per_im: 256
@@ -86,20 +86,20 @@ BBoxPostProcess:
   nms:
     name: MultiClassNMS
     keep_top_k: 100
-    score_threshold: 0.02 # smaller than 0.04
+    score_threshold: 0.04 # smaller than 0.04
     nms_threshold: 0.7
     normalized: true
 
 
-TrainDataset:
-  !COCODataSet
-    image_dir: train
-    anno_path: annotations/train.json
-    dataset_dir: D:\PaddleDataset
-    data_fields: ['image', 'gt_bbox', 'gt_class', 'is_crowd']
+# TrainDataset:
+#   !COCODataSet
+#     image_dir: train
+#     anno_path: annotations/train.json
+#     dataset_dir: D:\PaddleDataset
+#     data_fields: ['image', 'gt_bbox', 'gt_class', 'is_crowd']
 
-EvalDataset:
-  !COCODataSet
-    image_dir: val
-    anno_path: annotations/val.json
-    dataset_dir: D:\PaddleDataset
+# EvalDataset:
+#   !COCODataSet
+#     image_dir: val
+#     anno_path: annotations/val.json
+#     dataset_dir: D:\PaddleDataset

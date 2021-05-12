@@ -48,7 +48,6 @@ class ScaleReg(nn.Layer):
 class FCOSFeat(nn.Layer):
     """
     FCOSFeat of FCOS
-
     Args:
         feat_in (int): The channel number of input Tensor.
         feat_out (int): The channel number of output Tensor.

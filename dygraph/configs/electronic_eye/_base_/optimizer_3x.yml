@@ -1,7 +1,7 @@
 epoch: 36
 
 LearningRate:
-  base_lr: 0.00125 # 4 GPU 0.005 8GPU 0.01
+  base_lr: 0.005 # 4 GPU 0.005 8GPU 0.01
   schedulers:
   - !PiecewiseDecay
     gamma: 0.1

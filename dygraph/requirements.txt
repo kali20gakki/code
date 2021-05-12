@@ -7,4 +7,3 @@ shapely
 scipy
 pycocotools
 imgaug
-requests
