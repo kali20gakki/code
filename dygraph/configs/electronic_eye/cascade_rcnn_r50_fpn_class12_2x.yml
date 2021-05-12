@@ -18,7 +18,6 @@ CascadeRCNN:
   neck: FPN
   rpn_head: RPNHead
   bbox_head: CascadeHead
-  # post process
   bbox_post_process: BBoxPostProcess
 
 ResNet:
@@ -89,6 +88,19 @@ BBoxPostProcess:
     normalized: true
 
 num_classes: 2
+# TrainDataset:
+#   !COCODataSet
+#     image_dir: train
+#     anno_path: annotations/train_class12.json
+#     dataset_dir: D:\PaddleDataset
+#     data_fields: ['image', 'gt_bbox', 'gt_class', 'is_crowd']
+
+# EvalDataset:
+#   !COCODataSet
+#     image_dir: val
+#     anno_path: annotations/val_class12.json
+#     dataset_dir: D:\PaddleDataset
+
 TrainDataset:
   !COCODataSet
     image_dir: train
